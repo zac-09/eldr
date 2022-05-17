@@ -47,9 +47,9 @@ const formatOutput = (data) => {
 }
 
 const getPercentile = async (value, startDate) =>{
-  let entriesLower = await Eth.count({ lastUpdated: { $gte: startDate }, gasFeeMedium:{$lt: value}  }).exec()
-  let totalEntries = await Eth.count({ lastUpdated: { $gte: startDate } }).exec()
-  let percentile = (entriesLower/totalEntries) * 100
+  let entriesLower = await Eth.count({ lastUpdated: { $gte: startDate }, gasFeeMedium:{$lt: value}, deleted: false  }).exec();
+  let totalEntries = await Eth.count({ lastUpdated: { $gte: startDate } }).exec();
+  let percentile = (entriesLower/totalEntries) * 100;
   return percentile
 }
 
@@ -80,9 +80,24 @@ app.get('/api/getdata', async (request, response) => {
 
 })
 
-// NFT 
+// Task running every minute
 cron.schedule('* * * * *', () => {
-    console.log('running a task every minute');
+  //hard delete after 90 days
+  let today = new Date();
+  let past90Days = new Date(new Date().setDate(today.getDate() - 90));
+  Eth.deleteMany({lastUpdated: { $lt: past90Days }}).then(function(){
+    console.log("delted");
+  });
+
+  // soft delete after 30 days
+  let past30Days = new Date(new Date().setDate(today.getDate() - 90));
+  Eth.updateMany({ lastUpdated: { $lt: past30Days } }, { deleted: true })
+  .then(function(){
+    console.log("Soft delete completed");
+  });
+
+
+
 });
 
 // query every blockchainQueryRate seconds
@@ -104,10 +119,6 @@ cron.schedule(`*/${blockchainQueryRate} * * * * *`, () => {
     });
   });
 });
-
-// Eth.deleteMany({}).then(function(){
-//   console.log("delted");
-// })
 
 const PORT = process.env.PORT || 8000
     app.listen(PORT, () => {
