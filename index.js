@@ -4,12 +4,16 @@ const cors = require('cors')
 const cron = require('node-cron');
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const Eth = require('./models/eth')
+const NFTs = require('./models/nft')
+const NFT_Lader = require('./nft_load')
 const app = express()
 
 
 const blockchainQueryRate = process.env.ETH_QUERY_RATE  //rate for querying blockchain read in .env
 const NUM_BLOCKS = process.env.NUM_BLOCKS;
-const expectedApiKey = process.env.API_KEY
+const expectedApiKey = process.env.API_KEY;
+const moralisServerUrl = process.env.MORALIS_URL;
+const moralisAppId = process.env.MORALIS_APP_ID;
 
 // Using WebSockets
 const web3 = createAlchemyWeb3(
@@ -76,12 +80,50 @@ app.get('/api/getdata', async (request, response) => {
   data['percentile30Days'] = percentile30Days
   data['twitterLink'] = process.env.TWITTER_LINK
   data['discordLink'] = process.env.DISCORD_LINK
+
+  let NFTsEntry = await NFTs.findOne({}, {}, { sort: { 'lastUpdated' : -1 } }).exec();
+  let nfts = {};
+  for(let i=0; i<NFTsEntry.data.length; i++){
+    let entry = NFTsEntry.data[i];
+    nfts[`rank${entry.Rank}`] = {
+      metadata:entry.metadata,
+      name: entry.name, 
+      image: entry.image,
+      link: entry.link
+    }
+  }
+  data['top5NFTSByRarityOpensea'] = nfts;
+
   response.json(data)
 
 })
 
 // Task running every minute
-cron.schedule('* * * * *', () => {
+cron.schedule('* * * * *', async () => {
+  //Get and top NFTs
+  NFT_Lader.generateRality().then(function(data) {
+    let nfts = []
+    for(let i=0; i< data.length; i++){
+      let nft = {
+        Rank: data[i].Rank,
+        name: data[i].name,
+        image: data[i].image,
+        metadata: data[i].metadata,
+        link: data[i].token_uri
+      };
+      nfts.push(nft);
+    }
+    let entry = new NFTs({
+      lastUpdated: new Date(),
+      deleted: false,
+      data: nfts
+    });
+    entry.save().then((result) => {
+      console.log(`added NFTS, on ${result.lastUpdated} to database`)
+    });
+  });
+
+
   //hard delete after 90 days
   let today = new Date();
   let past90Days = new Date(new Date().setDate(today.getDate() - 90));
@@ -123,6 +165,4 @@ cron.schedule(`*/${blockchainQueryRate} * * * * *`, () => {
 const PORT = process.env.PORT || 8000
     app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
-})
-
-
+});

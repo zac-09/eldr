@@ -10,10 +10,25 @@ mongoose.connect(url)
     console.log('error connecting to MongoDB:', error.message)
   })
 const nftSchema = new mongoose.Schema({
-    name: Number,
-    link: String,
+    data: [
+      {
+        Rank: Number,
+        name: String,
+        image: String,
+        medatata: Object,
+        link: String
+       }
+      ],
     lastUpdated: Date,
     delete: Boolean,
 })
 
-module.exports = mongoose.model('Nft', nftSchema)
+nftSchema.set('toJSON', {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString()
+    delete returnedObject._id
+    delete returnedObject.__v
+  }
+})
+
+module.exports = mongoose.model('Nfts', nftSchema)

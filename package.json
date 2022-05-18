@@ -17,6 +17,7 @@
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
     "mongoose": "^6.3.3",
+    "moralis": "^1.7.0",
     "node-cron": "^3.0.0",
     "opensea-js": "^3.0.4",
     "web3": "^1.7.3"
