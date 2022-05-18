@@ -22,13 +22,13 @@ const generateRality = async () =>
 
     let response = NFTs;
 
-    // const timer = (ms) => new Promise((res) => setTimeout(res, ms));
-    // for (let i = pageSize; i < totalNum; i = i + pageSize) {
-    //     response = await response.next();
-    //     if (response.result.length == 0) break;
-    //     allNFTs = allNFTs.concat(response.result);
-    //     await timer(6000);
-    // }
+    const timer = (ms) => new Promise((res) => setTimeout(res, ms));
+    for (let i = pageSize; i < totalNum; i = i + pageSize) {
+        response = await response.next();
+        if (response.result.length == 0) break;
+        allNFTs = allNFTs.concat(response.result);
+        await timer(6000);
+    }
     
     let metadata = allNFTs.map((e) => JSON.parse(e.metadata).attributes)
 
