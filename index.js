@@ -91,7 +91,7 @@ cron.schedule('* * * * *', () => {
 
   // soft delete after 30 days
   let past30Days = new Date(new Date().setDate(today.getDate() - 90));
-  Eth.updateMany({ lastUpdated: { $lt: past30Days } }, { deleted: true })
+  Eth.updateMany({ lastUpdated: { $lt: payst30Days } }, { deleted: true })
   .then(function(){
     console.log("Soft delete completed");
   });
