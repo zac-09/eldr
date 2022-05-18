@@ -8,7 +8,7 @@ const NFTs = require('./models/nft')
 const NFT_Lader = require('./nft_load')
 const app = express()
 
-
+ 
 const blockchainQueryRate = process.env.ETH_QUERY_RATE  //rate for querying blockchain read in .env
 const NUM_BLOCKS = process.env.NUM_BLOCKS;
 const expectedApiKey = process.env.API_KEY;
@@ -88,14 +88,14 @@ app.get('/api/getdata', async (request, response) => {
     nfts[`rank${entry.Rank}`] = {
       metadata:entry.metadata,
       name: entry.name, 
-      image: entry.image,
+      image: entry.image, 
       link: entry.link
     }
   }
   data['top5NFTSByRarityOpensea'] = nfts;
 
   response.json(data)
-
+ 
 })
 
 // Task running every minute
