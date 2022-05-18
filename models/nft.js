@@ -15,7 +15,7 @@ const nftSchema = new mongoose.Schema({
         Rank: Number,
         name: String,
         image: String,
-        medatata: Object,
+        metadata: Object,
         link: String
        }
       ],
