@@ -130,6 +130,9 @@ cron.schedule('* * * * *', async () => {
   Eth.deleteMany({lastUpdated: { $lt: past90Days }}).then(function(){
     console.log("delted");
   });
+  NFTs.deleteMany({lastUpdated: { $lt: past90Days }}).then(function(){
+    console.log("delted");
+  });
 
   // soft delete after 30 days
   let past30Days = new Date(new Date().setDate(today.getDate() - 90));
@@ -137,6 +140,11 @@ cron.schedule('* * * * *', async () => {
   .then(function(){
     console.log("Soft delete completed");
   });
+  NFTs.updateMany({ lastUpdated: { $lt: payst30Days } }, { deleted: true })
+  .then(function(){
+    console.log("Soft delete completed");
+  });
+
 
 
 
