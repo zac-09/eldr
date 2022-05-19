@@ -33,6 +33,7 @@ cd eldr-labs-api
 | `MORALIS_APP_ID` | string | Moralis app id|
 | `NFT_COLLECTION` | string | Collection name to choose the rare nfts from|
 | `NUM_BLOCKS` | number | number of blocks to query from block chain|
+| `MAINTENANCE_MODE` | boolean | toggle api between maintenance mode|
 
 *Example*
 ```

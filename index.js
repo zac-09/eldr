@@ -58,12 +58,16 @@ const getPercentile = async (value, startDate) => {
   let percentile = (entriesLower / totalEntries) * 100;
   return percentile
 }
-
+const is_maintenance = process.env.MAINTENANCE_MODE
 app.get('/api/getdata', catchAsync(async (request, response) => {
   if (request.headers.apikey == expectedApiKey) {
     // Authorize access (will be improved)
   } else {
     response.status(401).send('unauthorized');
+  }
+  if(is_maintenance === "true"){
+    response.status(401).send('api is under  maintenance');
+
   }
   var data = {}
 
