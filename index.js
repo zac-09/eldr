@@ -85,7 +85,7 @@ app.get('/api/getdata', async (request, response) => {
   let nfts = {};
   for(let i=0; i<NFTsEntry.data.length; i++){
     let entry = NFTsEntry.data[i];
-    nfts[`rank${entry.Rank}`] = {
+    nfts[`rank${entry.Rank}`] = { 
       metadata:entry.metadata,
       name: entry.name, 
       image: entry.image, 
