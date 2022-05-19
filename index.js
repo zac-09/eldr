@@ -16,10 +16,10 @@ const NUM_BLOCKS = process.env.NUM_BLOCKS;
 const expectedApiKey = process.env.API_KEY;
 const moralisServerUrl = process.env.MORALIS_URL;
 const moralisAppId = process.env.MORALIS_APP_ID;
-
+const alchemy_url  = process.env.ALCHEMY_URL
 // Using WebSockets
 const web3 = createAlchemyWeb3(
-  "wss://eth-mainnet.alchemyapi.io/v2/73RMOv-DmeRuAD-i6Yy6iUsxlJ8da87P", // can be moved to .env
+  alchemy_url, // can be moved to .env
 );
 
 app.use(cors())

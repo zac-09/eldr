@@ -30,7 +30,8 @@ cd eldr-labs-api
 | `TWITTER_LINK` | string | link returned in api json format for twitter|
 | `DISCORD_LINK` | string | link returned in api json format for discord|
 | `MORALIS_URL` | string | URL to moralis server|
-| `MORALIS_APP_ID` | string | Moralis app id|
+| `MORALIS_URL` | string | URL to moralis server|
+| `ALCHEMY_URL` | string | websocket url from alchemy|
 | `NFT_COLLECTION` | string | Collection name to choose the rare nfts from|
 | `NUM_BLOCKS` | number | number of blocks to query from block chain|
 | `MAINTENANCE_MODE` | boolean | toggle api between maintenance mode|
