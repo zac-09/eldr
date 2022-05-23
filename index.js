@@ -7,15 +7,13 @@ const cron = require('node-cron');
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const Eth = require('./models/eth')
 const NFTs = require('./models/nft')
-const NFT_Lader = require('./nft_load')
+const NFT_Loader = require('./nft_load')
 const app = express()
 
 
 const blockchainQueryRate = process.env.ETH_QUERY_RATE  //rate for querying blockchain read in .env
 const NUM_BLOCKS = process.env.NUM_BLOCKS;
 const expectedApiKey = process.env.API_KEY;
-const moralisServerUrl = process.env.MORALIS_URL;
-const moralisAppId = process.env.MORALIS_APP_ID;
 const alchemy_url  = process.env.ALCHEMY_URL
 // Using WebSockets
 const web3 = createAlchemyWeb3(
@@ -80,6 +78,7 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
   let percentile24H = await getPercentile(currentMedium, date.setDate(date.getDate() - 1));
   let percentile7Days = await getPercentile(currentMedium, new Date(new Date() - 7 * 60 * 60 * 24 * 1000));
   let percentile30Days = await getPercentile(currentMedium, new Date(new Date() - 30 * 60 * 60 * 24 * 1000));
+  let eth_price = await NFT_Loader.getEthUsdprice();
   console.log("percentile", percentile24H)
   data = { ...entry.toJSON() }
   data['percentile24Hours'] = percentile24H
@@ -100,6 +99,7 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
     }
   }
   data['top5NFTSByRarityOpensea'] = nfts;
+  data['ethPrice'] = eth_price;
 
   response.json(data)
 
@@ -108,7 +108,7 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
 // Task running every minute
 cron.schedule('* * * * *', async () => {
   //Get and top NFTs
-  NFT_Lader.generateRality().then(function (data) {
+  NFT_Loader.generateRality().then(function (data) {
     let nfts = []
     for (let i = 0; i < data.length; i++) {
       let nft = {
@@ -173,6 +173,8 @@ cron.schedule(`*/${blockchainQueryRate} * * * * *`, () => {
 
     entry.save().then((result) => {
       console.log(`added ${result.gasFeeMedium}, on ${result.lastUpdated} to database`)
+    }).catch(error => {
+      console.log('error saving to MongoDB:', error.message)
     });
   });
 });

@@ -1,16 +1,35 @@
 // require('dotenv').config();
 const Moralis = require('moralis/node');
+const axios = require('axios').default;
 
 const serverUrl = process.env.MORALIS_URL;
 const appId = process.env.MORALIS_APP_ID;
 Moralis.start({serverUrl, appId});
 
 const collectionAddress = process.env.NFT_COLLECTION;
+const openSeaKey = process.env.OPENSEA_KEY;
 
 const resolveLink = (url) => {
     if (!url || !url.includes("ipfs://")) return url;
     return url.replace("ipfs://", "https://gateway.ipfs.io/ipfs/");
   };
+
+  const getOpenseaUrl = async (address, token_id) =>
+  {
+    token_url = 'n/a';
+    try {
+      let options = {
+        headers: { 'X-API-KEY': openSeaKey }
+      }
+      let resource = `https://api.opensea.io/api/v1/asset/${address}/${token_id}/?include_orders=false`
+      let response = await axios.get(resource, options);
+      let obj = response.data;
+      token_url = obj.permalink;     
+    } catch (error) {
+      console.log(error);
+    }
+    return token_url;
+  }
 
 const generateRality = async () =>
 {
@@ -131,13 +150,36 @@ const generateRality = async () =>
   let top5 = []
   for (let i = 0; i < 5; i++) {
     nftArr[i].Rank = i + 1;
+    nftArr[i].token_uri = await getOpenseaUrl(collectionAddress, nftArr[i].token_id)
     top5.push(nftArr[i])
   }
-  console.log(top5);
 
   return top5
 }
 
 
+const getEthUsdprice = async () =>
+{
+  let ethUsd = 'n/a';
+  try {
+    let options = {
+      headers: { 
+        'X-API-KEY': openSeaKey
+     }
+    }
+    let resource = 'https://api.opensea.io/api/v1/asset/0x2b5205a2e1f30e3269a85452a193e4e8390bbcaf/2/?include_orders=false'; // eth token url
+    let response = await axios.get(resource, options);
+    let obj = response.data;
+    let payment_tokens = obj.collection.payment_tokens;    
+    let ethToken = payment_tokens.filter(x => x.name == 'Ether');
+    if(ethToken.length > 0)
+        ethUsd = ethToken[0].usd_price
+  } 
+  catch (error) {
+    console.log("error:", error);
+  }
+  return ethUsd;
+}
 
-module.exports = {generateRality}
+
+module.exports = {generateRality, getEthUsdprice}
