@@ -42,12 +42,36 @@ const generateRality = async () =>
     let response = NFTs;
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
-    for (let i = pageSize; i < totalNum; i = i + pageSize) {
+    let retrieved = allNFTs.length;
+    while (retrieved < totalNum) {
+      if(response.next){
         response = await response.next();
-        if (response.result.length == 0) break;
-        allNFTs = allNFTs.concat(response.result);
-        await timer(6000);
+      }
+      else{
+        console.log("NEXT NULL ------------------------------------------")
+        const options = {
+          address: collectionAddress,
+          chain: "eth",
+          offset: retrieved
+        };
+        response = await Moralis.Web3API.token.getAllTokenIds(options);
+        console.log('Non next total:',response.result.total)
+      }
+        
+
+        if (response.result.length != 0){
+          allNFTs = allNFTs.concat(response.result);
+          console.log(`---------------(got: ${response.result.length})-------done batch(${allNFTs.length} of ${totalNum})--------------------------`)
+          await timer(1000);
+          retrieved = allNFTs.length
+        }
+        else{
+          console.log("Failed to get all data-------------------------------")
+          break;
+        }
+        
     }
+    console.log('******************************Done fetching**********************************')
     
     let metadata = allNFTs.map((e) => JSON.parse(e.metadata).attributes)
 
