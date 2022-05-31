@@ -17,7 +17,142 @@ const resolveLink = (url) => {
 
   const getOpenseaUrl = async (address, token_id) =>
   {
+<<<<<<< HEAD
       token_url = '';
+=======
+    token_url = 'n/a';
+    try {
+      let options = {
+        headers: { 'X-API-KEY': openSeaKey }
+      }
+      let resource = `https://api.opensea.io/api/v1/asset/${address}/${token_id}/?include_orders=false`
+      let response = await axios.get(resource, options);
+      let obj = response.data;
+      token_url = obj.permalink;     
+    } catch (error) {
+      console.log(error);
+    }
+    return token_url;
+  }
+
+const generateRality = async () =>
+{
+    let NFTs = await Moralis.Web3API.token.getAllTokenIds({address: collectionAddress});
+    const totalNum = NFTs.total
+    const pageSize = NFTs.page_size
+    
+    let allNFTs = NFTs.result;
+
+    let response = NFTs;
+
+    const timer = (ms) => new Promise((res) => setTimeout(res, ms));
+    let retrieved = allNFTs.length;
+    while (retrieved < totalNum) {
+      if(response.next){
+        response = await response.next();
+      }
+      else{
+        console.log("NEXT NULL ------------------------------------------")
+        const options = {
+          address: collectionAddress,
+          chain: "eth",
+          offset: retrieved
+        };
+        response = await Moralis.Web3API.token.getAllTokenIds(options);
+        console.log('Non next total:',response.result.total)
+      }
+        
+
+        if (response.result.length != 0){
+          allNFTs = allNFTs.concat(response.result);
+          console.log(`---------------(got: ${response.result.length})-------done batch(${allNFTs.length} of ${totalNum})--------------------------`)
+          await timer(1000);
+          retrieved = allNFTs.length
+        }
+        else{
+          console.log("Failed to get all data-------------------------------")
+          break;
+        }
+        
+    }
+    console.log('******************************Done fetching**********************************')
+    
+    let metadata = allNFTs.map((e) => JSON.parse(e.metadata).attributes)
+
+    let tally = {"TraitCount":{}}
+    for (let j = 0; j < metadata.length; j++) {
+        let nftTraits = metadata[j].map((e) => e.trait_type);
+        let nftValues = metadata[j].map((e) => e.value);
+    
+        let numOfTraits = nftTraits.length;
+    
+        if (tally.TraitCount[numOfTraits]) {
+          tally.TraitCount[numOfTraits]++;
+        } else {
+          tally.TraitCount[numOfTraits] = 1;
+        }
+
+        for (let i = 0; i < nftTraits.length; i++) {
+            let current = nftTraits[i];
+            if (tally[current]) {
+              tally[current].occurences++;
+            } else {
+              tally[current] = { occurences: 1 };
+            }
+      
+            let currentValue = nftValues[i];
+            if (tally[current][currentValue]) {
+              tally[current][currentValue]++;
+            } else {
+              tally[current][currentValue] = 1;
+            }
+        }
+    }
+
+  const collectionAttributes = Object.keys(tally);
+  let nftArr = [];
+  for (let j = 0; j < metadata.length; j++) {
+    let current = metadata[j];
+    let totalRarity = 0;
+    for (let i = 0; i < current.length; i++) {
+      let rarityScore =
+        1 / (tally[current[i].trait_type][current[i].value] / totalNum);
+      current[i].rarityScore = rarityScore;
+      totalRarity += rarityScore;
+    }
+
+    let rarityScoreNumTraits =
+      8 * (1 / (tally.TraitCount[Object.keys(current).length] / totalNum));
+    current.push({
+      trait_type: "TraitCount",
+      value: Object.keys(current).length,
+      rarityScore: rarityScoreNumTraits,
+    });
+    totalRarity += rarityScoreNumTraits;
+
+    if (current.length < collectionAttributes.length) {
+      let nftAttributes = current.map((e) => e.trait_type);
+      let absent = collectionAttributes.filter(
+        (e) => !nftAttributes.includes(e)
+      );
+
+      absent.forEach((type) => {
+        let rarityScoreNull =
+          1 / ((totalNum - tally[type].occurences) / totalNum);
+        current.push({
+          trait_type: type,
+          value: null,
+          rarityScore: rarityScoreNull,
+        });
+        totalRarity += rarityScoreNull;
+      });
+    }
+
+    if (allNFTs[j].metadata) {
+      allNFTs[j].metadata = JSON.parse(allNFTs[j].metadata);
+      allNFTs[j].image = resolveLink(allNFTs[j].metadata.image);
+    } else if (allNFTs[j].token_uri) {
+>>>>>>> 4af09020d18936003dba44318c497be92c281720
       try {
         let options = {
           headers: { 'X-API-KEY': openSeaKey }
@@ -215,6 +350,29 @@ const generateRality = async (collectionAddress) =>
 
     return upserted;
 }
+
+// const getEthUsdprice = async () =>
+// {
+//   let ethUsd = 'n/a';
+//   try {
+//     let options = {
+//       headers: { 
+//         'X-API-KEY': openSeaKey
+//      }
+//     }
+//     let resource = 'https://api.opensea.io/api/v1/asset/0x2b5205a2e1f30e3269a85452a193e4e8390bbcaf/2/?include_orders=false'; // eth token url
+//     let response = await axios.get(resource, options);
+//     let obj = response.data;
+//     let payment_tokens = obj.collection.payment_tokens;    
+//     let ethToken = payment_tokens.filter(x => x.name == 'Ether');
+//     if(ethToken.length > 0)
+//         ethUsd = ethToken[0].usd_price
+//   } 
+//   catch (error) {
+//     console.log("error:", error);
+//   }
+//   return ethUsd;
+// }
 
 const getEthUsdprice = async () =>
 {
