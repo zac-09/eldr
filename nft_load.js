@@ -42,12 +42,36 @@ const generateRality = async () =>
     let response = NFTs;
 
     const timer = (ms) => new Promise((res) => setTimeout(res, ms));
-    for (let i = pageSize; i < totalNum; i = i + pageSize) {
+    let retrieved = allNFTs.length;
+    while (retrieved < totalNum) {
+      if(response.next){
         response = await response.next();
-        if (response.result.length == 0) break;
-        allNFTs = allNFTs.concat(response.result);
-        await timer(6000);
+      }
+      else{
+        console.log("NEXT NULL ------------------------------------------")
+        const options = {
+          address: collectionAddress,
+          chain: "eth",
+          offset: retrieved
+        };
+        response = await Moralis.Web3API.token.getAllTokenIds(options);
+        console.log('Non next total:',response.result.total)
+      }
+        
+
+        if (response.result.length != 0){
+          allNFTs = allNFTs.concat(response.result);
+          console.log(`---------------(got: ${response.result.length})-------done batch(${allNFTs.length} of ${totalNum})--------------------------`)
+          await timer(1000);
+          retrieved = allNFTs.length
+        }
+        else{
+          console.log("Failed to get all data-------------------------------")
+          break;
+        }
+        
     }
+    console.log('******************************Done fetching**********************************')
     
     let metadata = allNFTs.map((e) => JSON.parse(e.metadata).attributes)
 
@@ -158,22 +182,42 @@ const generateRality = async () =>
 }
 
 
+// const getEthUsdprice = async () =>
+// {
+//   let ethUsd = 'n/a';
+//   try {
+//     let options = {
+//       headers: { 
+//         'X-API-KEY': openSeaKey
+//      }
+//     }
+//     let resource = 'https://api.opensea.io/api/v1/asset/0x2b5205a2e1f30e3269a85452a193e4e8390bbcaf/2/?include_orders=false'; // eth token url
+//     let response = await axios.get(resource, options);
+//     let obj = response.data;
+//     let payment_tokens = obj.collection.payment_tokens;    
+//     let ethToken = payment_tokens.filter(x => x.name == 'Ether');
+//     if(ethToken.length > 0)
+//         ethUsd = ethToken[0].usd_price
+//   } 
+//   catch (error) {
+//     console.log("error:", error);
+//   }
+//   return ethUsd;
+// }
+
 const getEthUsdprice = async () =>
 {
   let ethUsd = 'n/a';
   try {
     let options = {
       headers: { 
-        'X-API-KEY': openSeaKey
+        'X-API-KEY': process.env.MOLARIS_API_KEY
      }
     }
-    let resource = 'https://api.opensea.io/api/v1/asset/0x2b5205a2e1f30e3269a85452a193e4e8390bbcaf/2/?include_orders=false'; // eth token url
+    let resource = 'https://deep-index.moralis.io/api/v2/erc20/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/price'; // eth token url
     let response = await axios.get(resource, options);
     let obj = response.data;
-    let payment_tokens = obj.collection.payment_tokens;    
-    let ethToken = payment_tokens.filter(x => x.name == 'Ether');
-    if(ethToken.length > 0)
-        ethUsd = ethToken[0].usd_price
+    ethUsd = obj.usdPrice
   } 
   catch (error) {
     console.log("error:", error);
