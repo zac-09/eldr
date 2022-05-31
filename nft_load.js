@@ -47,7 +47,7 @@ const getCollectionNFTS = async (collectionAddress) =>{
   let allNFTs = NFTs.result;
   console.log('Name: ', allNFTs[0].name)
   let response = NFTs;
-
+  
   const timer = (ms) => new Promise((res) => setTimeout(res, ms));
   let retrieved = allNFTs.length;
   while (retrieved < totalNum) {
@@ -188,7 +188,8 @@ const generateRality = async (collectionAddress) =>
             link: '',  // update later
             image: allNFTs[j].image,
             lastUpdated: lastUpdated,
-            address: collectionAddress
+            address: collectionAddress,
+            Rank: 0
           }
           // Each document should look like this: (note the 'upsert': true)
           let upsertDoc = {
@@ -203,7 +204,10 @@ const generateRality = async (collectionAddress) =>
         console.log('Sorting and ranking: ...');
         nftArr.sort((a, b) => b.updateOne.update.Rarity - a.updateOne.update.Rarity);
         for(let i = 0; i< nftArr.length; i++)
-            nftArr[i].Rank = i + 1;
+        {
+          nftArr[i].updateOne.update.Rank = i + 1;
+        }
+            
 
         let bulkWriteResult = await NFTs.bulkWrite(nftArr);
         upserted = bulkWriteResult.nUpserted;

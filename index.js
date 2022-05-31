@@ -128,7 +128,7 @@ app.get('/api/getdata/:collection/:token_id', catchAsync(async (request, respons
       'byc': '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D',  // Bored Ape Yact
       'doodles': '0x8a90cab2b38dba80c64b7734e58ee1db38b8992e',
       'azuki': '0xed5af388653567af2f388e6224dc7c4b3241c544',
-      'noonbirds': '0x23581767a106ae21c074b2276d25e5c3e136a68b',
+      'moonbirds': '0x23581767a106ae21c074b2276d25e5c3e136a68b',
       'coolcats': '0x1a92f7381b9f03921564a437210bb9396471050c'
     }
 
