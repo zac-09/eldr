@@ -87,7 +87,7 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
   data['twitterLink'] = process.env.TWITTER_LINK
   data['discordLink'] = process.env.DISCORD_LINK
 
-  let NFTsEntry = await NFTs.findOne({}, {}, { sort: { 'lastUpdated': -1 } }).exec();
+  let NFTsEntry = await NFTs.find({}, {}, { sort: { 'Rarity': 1 } }).exec();
   let nfts = {};
   for (let i = 0; i < NFTsEntry.data.length; i++) {
     let entry = NFTsEntry.data[i];

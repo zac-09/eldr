@@ -10,17 +10,13 @@ mongoose.connect(url)
     console.log('error connecting to MongoDB:', error.message)
   })
 const nftSchema = new mongoose.Schema({
-    data: [
-      {
-        Rank: Number,
-        name: String,
-        image: String,
-        metadata: Object,
-        link: String
-       }
-      ],
+    Rarity: Number,
+    name: String,
+    image: String,
+    metadata: Object,
+    link: String,  
+    token_id: Number, 
     lastUpdated: Date,
-    delete: Boolean,
 })
 
 nftSchema.set('toJSON', {
@@ -31,4 +27,4 @@ nftSchema.set('toJSON', {
   }
 })
 
-module.exports = mongoose.model('Nfts', nftSchema)
+module.exports = mongoose.model('Nfts_Rality', nftSchema)
