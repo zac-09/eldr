@@ -15,17 +15,9 @@ const resolveLink = (url) => {
     return url.replace("ipfs://", "https://gateway.ipfs.io/ipfs/");
   };
 
-  const getOpenseaUrl = async (name, token_id) =>
+  const getOpenseaUrl = async (address, token_id) =>
   {
-      const addresses = {
-        'BoredApeYachtClub': '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D',
-        'Doodles': '0x8a90cab2b38dba80c64b7734e58ee1db38b8992e',
-        'Azuki': '0xed5af388653567af2f388e6224dc7c4b3241c544',
-        'Moonbirds': '0x23581767a106ae21c074b2276d25e5c3e136a68b', 
-        'Cool Cats': '0x1a92f7381b9f03921564a437210bb9396471050c'
-      };
-      let address = addresses[name]
-      token_url = 'n/a';
+      token_url = '';
       try {
         let options = {
           headers: { 'X-API-KEY': openSeaKey }
@@ -54,10 +46,8 @@ const getCollectionNFTS = async (collectionAddress) =>{
   
   let allNFTs = NFTs.result;
   console.log('Name: ', allNFTs[0].name)
-  if(allNFTs[0].name == 'Cool Cats')
-    console.log(allNFTs[0])
   let response = NFTs;
-  
+
   const timer = (ms) => new Promise((res) => setTimeout(res, ms));
   let retrieved = allNFTs.length;
   while (retrieved < totalNum) {
@@ -68,7 +58,6 @@ const getCollectionNFTS = async (collectionAddress) =>{
       break;
     }
       
-
     if (response.result.length != 0){
       allNFTs = allNFTs.concat(response.result);
       console.log(`---------------(got: ${response.result.length})-------done batch(${allNFTs.length} of ${totalNum})--------------------------`)
@@ -198,7 +187,8 @@ const generateRality = async (collectionAddress) =>
             name: allNFTs[j].name,
             link: '',  // update later
             image: allNFTs[j].image,
-            lastUpdated: lastUpdated
+            lastUpdated: lastUpdated,
+            address: collectionAddress
           }
           // Each document should look like this: (note the 'upsert': true)
           let upsertDoc = {
@@ -210,6 +200,10 @@ const generateRality = async (collectionAddress) =>
 
           nftArr.push(upsertDoc);
         }
+        console.log('Sorting and ranking: ...');
+        nftArr.sort((a, b) => b.updateOne.update.Rarity - a.updateOne.update.Rarity);
+        for(let i = 0; i< nftArr.length; i++)
+            nftArr[i].Rank = i + 1;
 
         let bulkWriteResult = await NFTs.bulkWrite(nftArr);
         upserted = bulkWriteResult.nUpserted;
@@ -242,5 +236,28 @@ const getEthUsdprice = async () =>
   return ethUsd;
 }
 
+const updateUrlOf10 = async () =>{
+  let nftdocs = await NFTs.find({link: ''}).sort({ Rarity: -1 }).limit(10).exec();
+  if (nftdocs.length > 0){
+    let bulkArr = [];
+    
+    for(let i = 0; i < nftdocs.length; i++){
+      let nftDoc = nftdocs[i]
+      let link = await getOpenseaUrl(nftDoc.address, nftDoc.token_id)
+      let upsertDoc = {
+        'updateOne': {
+          'filter': { 'address': nftDoc.address, 'token_id': nftDoc.token_id },
+          'update': {link: link},
+          'upsert': false
+        }
+      }
+      bulkArr.push(upsertDoc);
+   };
 
-module.exports = {getEthUsdprice, updateAllNFTS, getOpenseaUrl}
+    let bulkWriteResult = await NFTs.bulkWrite(bulkArr);
+    let upserted = bulkWriteResult.nUpserted;
+    console.log('Upserted:', upserted)
+  }
+}
+
+module.exports = {getEthUsdprice, updateAllNFTS, getOpenseaUrl, updateUrlOf10}

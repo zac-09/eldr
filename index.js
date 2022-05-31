@@ -7,7 +7,8 @@ const cron = require('node-cron');
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const Eth = require('./models/eth')
 const NFTs = require('./models/nft')
-const NFT_Loader = require('./nft_load')
+const NFT_Loader = require('./nft_load');
+const { response } = require('express');
 const app = express()
 
 
@@ -87,15 +88,19 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
   data['twitterLink'] = process.env.TWITTER_LINK
   data['discordLink'] = process.env.DISCORD_LINK
 
-  let NFTsEntry = await NFTs.find({}, {}, { sort: { 'Rarity': 1 } }).exec();
+  let topNFTs = await NFTs.find({}).sort({ Rarity: -1 }).limit(5).exec();
   let nfts = {};
-  for (let i = 0; i < NFTsEntry.data.length; i++) {
-    let entry = NFTsEntry.data[i];
-    nfts[`rank${entry.Rank}`] = {
+  for (let i = 0; i < topNFTs.length; i++) {
+    let entry = topNFTs[i];
+    let link = entry.link;
+    if(link === ''){
+        link = await NFT_Loader.getOpenseaUrl(entry.address, entry.token_id);
+    }
+    nfts[`rank${i+1}`] = {
       metadata: entry.metadata,
       name: entry.name,
       image: entry.image,
-      link: entry.link
+      link: link
     }
   }
   data['top5NFTSByRarityOpensea'] = nfts;
@@ -105,39 +110,50 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
 
 }))
 
+app.get('/api/getdata/:collection/:token_id', catchAsync(async (request, response)=>{
+    if (request.headers.apikey == expectedApiKey) {
+      // Authorize access (will be improved)
+    } else {
+      response.status(401).send('unauthorized');
+    }
+    if(is_maintenance === "true"){
+      response.status(401).send('api is under  maintenance');
+
+    }
+    let collection = request.params.collection.toLowerCase();
+    let token_id = request.params.token_id;
+    let result = {}
+
+    let addresses = {
+      'byc': '0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D',  // Bored Ape Yact
+      'doodles': '0x8a90cab2b38dba80c64b7734e58ee1db38b8992e',
+      'azuki': '0xed5af388653567af2f388e6224dc7c4b3241c544',
+      'noonbirds': '0x23581767a106ae21c074b2276d25e5c3e136a68b',
+      'coolcats': '0x1a92f7381b9f03921564a437210bb9396471050c'
+    }
+
+    if( collection in addresses){
+      let address = addresses[collection];
+      let nft = await NFTs.findOne( {address: address, token_id: token_id }).exec();
+      // console.log('ranking:', nft.Rank);
+      result = nft;
+    }
+    else{
+      result['message'] = "Collection not found";
+    }
+
+    response.json(result)
+}));
+
 // Task running every minute
 cron.schedule('* * * * *', async () => {
-  //Get and top NFTs
-  NFT_Loader.generateRality().then(function (data) {
-    let nfts = []
-    for (let i = 0; i < data.length; i++) {
-      let nft = {
-        Rank: data[i].Rank,
-        name: data[i].name,
-        image: data[i].image,
-        metadata: data[i].metadata,
-        link: data[i].token_uri
-      };
-      nfts.push(nft);
-    }
-    let entry = new NFTs({
-      lastUpdated: new Date(),
-      deleted: false,
-      data: nfts
-    });
-    entry.save().then((result) => {
-      console.log(`added NFTS, on ${result.lastUpdated} to database`)
-    });
-  });
-
+  //update opensea Urls
+  await NFT_Loader.updateUrlOf10()
 
   //hard delete after 90 days
   let today = new Date();
   let past90Days = new Date(new Date().setDate(today.getDate() - 90));
   Eth.deleteMany({ lastUpdated: { $lt: past90Days } }).then(function () {
-    console.log("delted");
-  });
-  NFTs.deleteMany({ lastUpdated: { $lt: past90Days } }).then(function () {
     console.log("delted");
   });
 
@@ -147,13 +163,6 @@ cron.schedule('* * * * *', async () => {
     .then(function () {
       console.log("Soft delete completed");
     });
-  NFTs.updateMany({ lastUpdated: { $lt: past30Days } }, { deleted: true })
-    .then(function () {
-      console.log("Soft delete completed");
-    });
-
-
-
  
 });
 
@@ -177,6 +186,12 @@ cron.schedule(`*/${blockchainQueryRate} * * * * *`, () => {
       console.log('error saving to MongoDB:', error.message)
     });
   });
+});
+
+cron.schedule('*/5 * * * *', async () => {
+  //running every five minutes to update nfts
+  await NFT_Loader.updateAllNFTS()
+
 });
 
 app.use("*", (req, res) => {

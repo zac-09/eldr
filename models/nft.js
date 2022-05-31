@@ -11,12 +11,14 @@ mongoose.connect(url)
   })
 const nftSchema = new mongoose.Schema({
     Rarity: Number,
+    Rank: Number,
     name: String,
     image: String,
     metadata: Object,
     link: String,  
     token_id: Number, 
     lastUpdated: Date,
+    address: String,
 })
 
 nftSchema.set('toJSON', {
