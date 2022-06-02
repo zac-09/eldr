@@ -27,12 +27,18 @@ const median = arr => {
   return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 };
 
-const getPercentile = async (value, startDate) => {
-  let entriesLower = await EthPrice.count({ lastUpdated: { $gte: startDate }, ethPrice: { $lt: value }, deleted: false }).exec();
+const getPercentile = async (startDate) => {
   let totalEntries = await EthPrice.count({ lastUpdated: { $gte: startDate } }).exec();
+
+  //determine median in date range
+  let medianEntry = await EthPrice.find({ lastUpdated: { $gte: startDate }}).sort( {"ethPrice":1} ).skip(totalEntries / 2 - 1).limit(1).exec();
+  let medianValue = medianEntry[0].ethPrice;
+
+  let entriesLower = await EthPrice.count({ lastUpdated: { $gte: startDate }, ethPrice: { $lt: medianValue }, deleted: false }).exec(); 
   let percentile = (entriesLower / totalEntries) * 100;
   return percentile
 }
+
 const is_maintenance = process.env.MAINTENANCE_MODE
 app.get('/api/getdata', catchAsync(async (request, response) => {
   if (request.headers.apikey == expectedApiKey) {
@@ -51,13 +57,12 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
   values.sort((a, b) => a - b);
   let lowest = values[0]
   let highest = values[values.length - 1]
-  console.log('values:', values)
 
   let currentMedium = median(values);
   let date = new Date()
-  let percentile24H = await getPercentile(currentMedium, date.setDate(date.getDate() - 1));
-  let percentile7Days = await getPercentile(currentMedium, new Date(new Date() - 7 * 60 * 60 * 24 * 1000));
-  let percentile30Days = await getPercentile(currentMedium, new Date(new Date() - 30 * 60 * 60 * 24 * 1000));
+  let percentile24H = await getPercentile(date.setDate(date.getDate() - 1));
+  let percentile7Days = await getPercentile(new Date(new Date() - 7 * 60 * 60 * 24 * 1000));
+  let percentile30Days = await getPercentile(new Date(new Date() - 30 * 60 * 60 * 24 * 1000));
   let eth_price = await NFT_Loader.getEthUsdprice();
   data['ethPriceLow'] = lowest;
   data['ethPriceMedium'] = currentMedium;
