@@ -8,10 +8,12 @@ const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const NFTs = require('./models/nft')
 const NFT_Loader = require('./nft_load');
 const EthPrice = require('./models/eth_price')
+const Eth = require('./models/eth')
 const app = express()
 
 
 const blockchainQueryRate = process.env.ETH_QUERY_RATE  //rate for querying blockchain read in .env
+const NUM_BLOCKS = process.env.NUM_BLOCKS;
 const expectedApiKey = process.env.API_KEY;
 const alchemy_url  = process.env.ALCHEMY_URL
 // Using WebSockets
@@ -26,6 +28,28 @@ const median = arr => {
     nums = [...arr].sort((a, b) => a - b);
   return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 };
+
+const formatOutput = (data) => {
+  let avgGasFee = 0;
+  let maximum = 0;
+  let minimum = Infinity
+  let gasValues = []
+
+  for (let i = 0; i < NUM_BLOCKS; i++) {
+    let gasFee = Number(data.reward[i][1]) + Number(data.baseFeePerGas[i])
+    gasValues.push(gasFee)
+    avgGasFee = avgGasFee + gasFee
+    if (gasFee > maximum) maximum = gasFee;
+    if (gasFee < minimum) minimum = gasFee;
+  }
+  avgGasFee = avgGasFee / NUM_BLOCKS;
+  avgGasFee = Math.round(avgGasFee / 10 ** 9)
+  maximum = Math.round(maximum / 10 ** 9)
+  minimum = Math.round(minimum / 10 ** 9)
+  let medianValue = median(gasValues)
+  medianValue = Math.round(medianValue / 10 ** 9)
+  return { avgGasFee, medianValue, minimum, maximum };
+}
 
 const getPercentile = async (startDate) => {
   let totalEntries = await EthPrice.count({ lastUpdated: { $gte: startDate } }).exec();
@@ -51,6 +75,11 @@ app.get('/api/getdata', catchAsync(async (request, response) => {
 
   }
   var data = {}
+  let gasPriceEntry = await Eth.findOne({}, {}, { sort: { 'lastUpdated': -1 } }).exec();
+  delete gasPriceEntry._id;
+  delete gasPriceEntry.__v;
+
+  data = { ...gasPriceEntry.toJSON() }
 
   let last100 = await EthPrice.find({'deleted': false}, {}, {sort: {'lastUpdated': -1} }).limit(100);
   let values = last100.map(p => p.ethPrice);
@@ -143,6 +172,9 @@ cron.schedule('* * * * *', async () => {
   EthPrice.deleteMany({ lastUpdated: { $lt: past90Days } }).then(function () {
     console.log("delted");
   });
+  Eth.deleteMany({ lastUpdated: { $lt: past90Days } }).then(function () {
+    console.log("delted");
+  });
 
   // soft delete after 30 days
   let past30Days = new Date(new Date().setDate(today.getDate() - 30));
@@ -150,6 +182,10 @@ cron.schedule('* * * * *', async () => {
     .then(function () {
       console.log("Soft delete completed");
     });
+  Eth.updateMany({ lastUpdated: { $lt: past30Days } }, { deleted: true })
+  .then(function () {
+    console.log("Soft delete completed");
+  });
  
 });
 
@@ -157,17 +193,34 @@ cron.schedule('* * * * *', async () => {
 cron.schedule(`*/${blockchainQueryRate} * * * * *`, async () => {
     console.log('querying for eth price')
     let ethPrice = await NFT_Loader.getEthUsdprice();
-
     let entry = new EthPrice({
       ethPrice: ethPrice,
       lastUpdated: new Date(),
       deleted: false,
     });
-
     entry.save().then((result) => {
       console.log(`added ${result.ethPrice}, on ${result.lastUpdated} to database`)
     }).catch(error => {
       console.log('error saving to MongoDB:', error.message)
+    });
+
+    console.log('querying for average Gas price')
+    web3.eth.getFeeHistory(NUM_BLOCKS, "latest", [25, 50, 75]).then((data) => {
+      const output = formatOutput(data);
+      let entry = new Eth({
+        gasFeeLow: output.minimum,
+        gasFeeMedium: output.medianValue,
+        gasFeeHigh: output.maximum,
+        gasFeeAvg: output.avgGasFee,
+        lastUpdated: new Date(),
+        deleted: false,
+      });
+
+      entry.save().then((result) => {
+        console.log(`added ${result.gasFeeMedium}, on ${result.lastUpdated} to database`)
+      }).catch(error => {
+        console.log('error saving to MongoDB:', error.message)
+      });
     });
 });
 
