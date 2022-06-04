@@ -58,8 +58,12 @@ const getPercentile = async (startDate) => {
   let medianEntry = await EthPrice.find({ lastUpdated: { $gte: startDate }}).sort( {"ethPrice":1} ).skip(totalEntries / 2 - 1).limit(1).exec();
   let medianValue = medianEntry[0].ethPrice;
 
-  let entriesLower = await EthPrice.count({ lastUpdated: { $gte: startDate }, ethPrice: { $lt: medianValue }, deleted: false }).exec(); 
-  let percentile = (entriesLower / totalEntries) * 100;
+  // let entriesLower = await EthPrice.count({ lastUpdated: { $gte: startDate }, ethPrice: { $lt: medianValue }, deleted: false }).exec(); 
+  // let percentile = (entriesLower / totalEntries) * 100;
+  let latest = await EthPrice.findOne({}, {}, { sort: { 'lastUpdated': -1 } }).exec();
+  let presentValue = latest.ethPrice;
+  // (1 - Median/Present) * 100
+  let percentile = (1 - medianValue/presentValue) * 100;
   return percentile
 }
 
